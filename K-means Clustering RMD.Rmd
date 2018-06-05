@@ -1,0 +1,101 @@
+---
+title: "K-Means Clustering Project"
+author: "Katie Wilson"
+date: "June 4, 2018"
+output: html_document
+---
+
+This mini-project is based on the K-Means exercise from 'R in Action'
+Go here for the original blog post and solutions 
+http://www.r-bloggers.com/k-means-clustering-from-r-in-action/
+
+Exercise 0: Install these packages if you don't have them already
+
+```{r}
+install.packages(c("cluster", "rattle.data","NbClust"))
+library(cluster)
+library(rattle.data)
+library(NbClust)
+```
+
+Now load the data and look at the first few rows
+
+```{r}
+data(wine, package="rattle.data")
+head(wine)
+```
+
+Exercise 1: Remove the first column from the data and scale it using the scale() function
+
+```{r}
+wineDF <- wine[-1]
+scale(wineDF)
+```
+
+Now we'd like to cluster the data using K-Means. How do we decide how many clusters to use if you don't know that already? We'll try two methods.
+
+Method 1: A plot of the total within-groups sums of squares against the number of clusters in a K-means solution can be helpful. A bend in the graph can suggest the appropriate number of clusters.
+
+```{r}
+wssplot <- function(data, nc=15, seed=1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+  
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+}
+
+wssplot(wineDF)
+```
+
+Exercise 2:
+* How many clusters does this method suggest?
+* Why does this method work? What's the intuition behind it?
+* Look at the code for wssplot() and figure out how it works
+
+_It is showing me to use 3 clusters because that is where the graph begins to level off. This method works because it tests each of the options of clusters between 1 and 15 and shows the data associated with each cluster. We want to use the point where the graph begins to level off because it provides enough clusters where the distance bewteen the points and the cluster centers is minimized but where the points are far enough away to not be too tight._
+
+Method 2: Use the NbClust library, which runs many experiments and gives a distribution of potential number of clusters.
+
+```{r}
+library(NbClust)
+set.seed(1234)
+nc <- NbClust(wineDF, min.nc=2, max.nc=15, method="kmeans")
+barplot(table(nc$Best.n[1,]),
+        xlab="Numer of Clusters", ylab="Number of Criteria",
+        main="Number of Clusters Chosen by 26 Criteria")
+```
+
+Exercise 3: How many clusters does this method suggest?
+
+_Under this method, the best number of clusters is 2._
+
+Exercise 4: Once you've picked the number of clusters, run k-means using this number of clusters. Output the result of calling kmeans() into a variable fit.km
+
+```{r}
+fit.km <- kmeans(wineDF, centers = 3, iter.max = 1000)
+```
+
+Now we want to evaluate how well this clustering does.
+
+Exercise 5: using the table() function, show how the clusters in Clusters compares to the actual wine types in Type. Would you consider this a good clustering?
+
+```{r}
+Clusters <- fit.km$cluster
+table <- table(wine$Type, fit.km$cluster)
+table
+```
+
+_This clustering does not seem to be capturing the data completely. There is a slight correlation between Type 1 and Cluster 3, Type 2 and Cluster 2, and Type 3 and Cluster 1, but with the outlying values as great as 13, 19, and 20, this does not seem to be the correct clustering of this data._
+
+Exercise 6:
+* Visualize these clusters using  function clusplot() from the cluster library
+* Would you consider this a good clustering?
+
+```{r}
+clusplot(pam(wineDF, 3))
+```
+
+_This clustering also does not seem to have a good predictability of the data. The clustering is accounting for 55% of the variability which is barely over half. There is probably a better way to cluster this that would account for much more of the variability._
